@@ -16,6 +16,7 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.highlight.Highlight;
 import java.util.List;
 
 public final class ElevationChartUtils
@@ -217,5 +218,37 @@ public final class ElevationChartUtils
     }
 
     return entries.get(entries.size() - 1).getY();
+  }
+
+  /** @return the profile point at the given X, clamped to the profile's ends. */
+  @NonNull
+  public static Highlight highlightAt(@NonNull List<Entry> entries, float xVal)
+  {
+    final float x = Math.max(entries.get(0).getX(), Math.min(xVal, entries.get(entries.size() - 1).getX()));
+    return new Highlight(x, interpolateY(entries, x), 0);
+  }
+
+  /**
+   * Both sides of a track gap share one chart X, and the core tells them apart only by the exact distance.
+   * @param distances the exact distances of the profile points, in ascending order
+   * @return {@code selectedDistance} when the float chart X stands for it, otherwise the exact distance of the first
+   * profile point at that X, as the core picks the first one too, otherwise {@code chartX}.
+   */
+  public static double toDistance(float chartX, double selectedDistance, @NonNull double[] distances)
+  {
+    // The selected distance goes first: its float can also be a later point's, like the finish.
+    if (chartX == (float) selectedDistance)
+      return selectedDistance;
+    int lo = 0;
+    int hi = distances.length;
+    while (lo < hi)
+    {
+      final int mid = (lo + hi) >>> 1;
+      if ((float) distances[mid] < chartX)
+        lo = mid + 1;
+      else
+        hi = mid;
+    }
+    return lo < distances.length && (float) distances[lo] == chartX ? distances[lo] : chartX;
   }
 }

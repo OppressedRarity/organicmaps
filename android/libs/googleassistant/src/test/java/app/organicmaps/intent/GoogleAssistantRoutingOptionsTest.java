@@ -89,6 +89,19 @@ public class GoogleAssistantRoutingOptionsTest
     }
   }
 
+  @Test
+  public void followModeStartsAPlanThroughTheController()
+  {
+    RoutingController controller = mockPlan(Router.Pedestrian);
+    try (MockedStatic<Logger> ignored = mockStatic(Logger.class);
+         MockedStatic<RoutingController> routing = mockStatic(RoutingController.class))
+    {
+      routing.when(RoutingController::get).thenReturn(controller);
+      assertTrue(new GoogleAssistantIntentHandler() {}.handleIntent(carAction("follow_mode"), (query, viewport) -> {}));
+      verify(controller).start();
+    }
+  }
+
   private static RoutingController mockPlan(Router router)
   {
     RoutingController controller = mock(RoutingController.class);
