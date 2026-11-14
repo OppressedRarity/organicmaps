@@ -48,6 +48,7 @@ class PlacePageTrackLayout: IPlacePageLayout {
     vc.canReplaceStop = navigationManager.selectedRoutePoint != nil
     vc.shouldAppendNewPoints = navigationManager.shouldAppendNewPoints
     vc.delegate = interactor
+    vc.isTrackRouting = MWMRouter.hasTrackNavigationSession()
     return vc
   }()
 
