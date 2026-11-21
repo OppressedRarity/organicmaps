@@ -588,8 +588,6 @@ extension NavigationDashboardViewController: UIScrollViewDelegate {
 extension NavigationDashboardViewController {
   func render(_ viewModel: NavigationDashboard.ViewModel) {
     let isTrack = viewModel.planningMode == .navigateTrack
-    // TODO(KK) - Show when the revert track feature will be implemented
-    reverseRoutePointsButton.isHidden = isTrack
     settingsButton.isHidden = isTrack
     searchButton.isHidden = isTrack
     bookmarksButton.isHidden = isTrack
