@@ -80,7 +80,9 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
       break
     case .onDiskOutOfDate:
       mapsStorage.updateNode(countryId)
-    case .notDownloaded, .partly, .error:
+    case .error:
+      mapsStorage.retryDownloadNode(withAlerts: countryId)
+    case .notDownloaded, .partly:
       mapsStorage.downloadNode(countryId)
     case .undefined:
       fatalError("Download button shouldn't be displayed for an undefined map status")
