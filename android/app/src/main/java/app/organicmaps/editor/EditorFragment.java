@@ -44,6 +44,11 @@ import java.util.Map;
 public class EditorFragment extends BaseMwmFragment implements View.OnClickListener
 {
   final static String LAST_INDEX_OF_NAMES_ARRAY = "LastIndexOfNamesArray";
+  private final static String STATE_HOUSE_NUMBER = "HouseNumber";
+  private final static String STATE_BUILDING_LEVELS = "BuildingLevels";
+  private final static String STATE_DESCRIPTION = "Description";
+  private final static String STATE_WIFI = "Wifi";
+  private final static String STATE_ADDITIONAL_NAMES_SHOWN = "AdditionalNamesShown";
 
   private TextView mCategory;
   private View mCardName;
@@ -207,10 +212,35 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
   }
 
   @Override
-  public void onSaveInstanceState(Bundle outState)
+  public void onSaveInstanceState(@NonNull Bundle outState)
   {
     super.onSaveInstanceState(outState);
-    setEdits();
+    outState.putString(STATE_HOUSE_NUMBER, mHouseNumber.getText().toString());
+    outState.putString(STATE_BUILDING_LEVELS, mBuildingLevels.getText().toString());
+    outState.putString(STATE_DESCRIPTION, mDescription.getText().toString());
+    outState.putBoolean(STATE_WIFI, mWifi.isChecked());
+    for (var e : mMetadata.entrySet())
+      outState.putString(e.getKey().name(), e.getValue().mEdit.getText().toString());
+    outState.putBoolean(STATE_ADDITIONAL_NAMES_SHOWN, mNamesAdapter.areAdditionalLanguagesShown());
+  }
+
+  @Override
+  public void onViewStateRestored(@Nullable Bundle savedInstanceState)
+  {
+    // All inputs share R.id.input, so the restored view state must be overwritten.
+    super.onViewStateRestored(savedInstanceState);
+    if (savedInstanceState == null)
+      return;
+
+    mHouseNumber.setText(savedInstanceState.getString(STATE_HOUSE_NUMBER));
+    mBuildingLevels.setText(savedInstanceState.getString(STATE_BUILDING_LEVELS));
+    mDescription.setText(savedInstanceState.getString(STATE_DESCRIPTION));
+    mWifi.setChecked(savedInstanceState.getBoolean(STATE_WIFI));
+    for (var e : mMetadata.entrySet())
+      e.getValue().mEdit.setText(savedInstanceState.getString(e.getKey().name()));
+    // Don't collapse the names expanded for a newly added language.
+    if (savedInstanceState.getBoolean(STATE_ADDITIONAL_NAMES_SHOWN))
+      showAdditionalNames(true);
   }
 
   boolean setEdits()
@@ -364,10 +394,11 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
       showAdditionalNames(false);
       return;
     }
+    final int position = args.getInt(LAST_INDEX_OF_NAMES_ARRAY);
+    args.remove(LAST_INDEX_OF_NAMES_ARRAY);
     showAdditionalNames(true);
     UiUtils.waitLayout(mNamesView, () -> {
       LinearLayoutManager lm = (LinearLayoutManager) mNamesView.getLayoutManager();
-      int position = args.getInt(LAST_INDEX_OF_NAMES_ARRAY);
 
       View nameItem = lm.findViewByPosition(position);
 
