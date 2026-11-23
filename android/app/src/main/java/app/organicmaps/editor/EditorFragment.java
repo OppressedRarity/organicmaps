@@ -1,6 +1,5 @@
 package app.organicmaps.editor;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -46,7 +45,6 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
 {
   final static String LAST_INDEX_OF_NAMES_ARRAY = "LastIndexOfNamesArray";
   private final static String STATE_HOUSE_NUMBER = "HouseNumber";
-  private final static String STATE_BUILDING_LEVELS = "BuildingLevels";
   private final static String STATE_DESCRIPTION = "Description";
   private final static String STATE_WIFI = "Wifi";
   private final static String STATE_ADDITIONAL_NAMES_SHOWN = "AdditionalNamesShown";
@@ -101,7 +99,6 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
 
   private TextView mStreet;
   private TextInputEditText mHouseNumber;
-  private TextInputEditText mBuildingLevels;
 
   // Define Metadata entries, that have more tricky logic, separately.
   private TextView mPhone;
@@ -114,7 +111,6 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
   private final Map<Metadata.MetadataType, TextInputEditText> mMetadata = new EnumMap<>(Metadata.MetadataType.class);
 
   private TextInputLayout mInputHouseNumber;
-  private TextInputLayout mInputBuildingLevels;
 
   private View mEmptyOpeningHours;
   private TextView mOpeningHours;
@@ -150,22 +146,8 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
       @Override
       public void onTextChanged(CharSequence s, int start, int before, int count)
       {
-        UiUtils.setInputError(mInputHouseNumber,
-                              Editor.nativeIsHouseValid(s.toString()) ? 0 : R.string.error_enter_correct_house_number);
-      }
-    });
-
-    mBuildingLevels.setText(Editor.nativeGetBuildingLevels());
-    mBuildingLevels.addTextChangedListener(new StringUtils.SimpleTextWatcher() {
-      @Override
-      public void onTextChanged(CharSequence s, int start, int before, int count)
-      {
-        final Context context = mInputBuildingLevels.getContext();
-        final boolean isValid = Editor.nativeIsLevelValid(s.toString());
-        UiUtils.setInputError(mInputBuildingLevels,
-                              isValid ? null
-                                      : context.getString(R.string.error_enter_correct_storey_number,
-                                                          Editor.nativeGetMaxEditableBuildingLevels()));
+        final boolean isValid = isHouseNumberUnchangedOrValid(s.toString());
+        UiUtils.setInputError(mInputHouseNumber, isValid ? 0 : R.string.error_enter_correct_house_number);
       }
     });
 
@@ -187,7 +169,6 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
   {
     super.onSaveInstanceState(outState);
     outState.putString(STATE_HOUSE_NUMBER, mHouseNumber.getText().toString());
-    outState.putString(STATE_BUILDING_LEVELS, mBuildingLevels.getText().toString());
     outState.putString(STATE_DESCRIPTION, mDescription.getText().toString());
     outState.putBoolean(STATE_WIFI, mWifi.isChecked());
     for (var e : mMetadata.entrySet())
@@ -204,7 +185,6 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
       return;
 
     mHouseNumber.setText(savedInstanceState.getString(STATE_HOUSE_NUMBER));
-    mBuildingLevels.setText(savedInstanceState.getString(STATE_BUILDING_LEVELS));
     mDescription.setText(savedInstanceState.getString(STATE_DESCRIPTION));
     mWifi.setChecked(savedInstanceState.getBoolean(STATE_WIFI));
     for (var e : mMetadata.entrySet())
@@ -220,7 +200,6 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
       return false;
 
     Editor.nativeSetHouseNumber(mHouseNumber.getText().toString());
-    Editor.nativeSetBuildingLevels(mBuildingLevels.getText().toString());
     Editor.nativeSetHasWifi(mWifi.isChecked());
     Editor.nativeSetNames(mParent.getNamesAsArray());
 
@@ -247,21 +226,11 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
 
   private boolean validateFields()
   {
-    if (Editor.nativeIsAddressEditable())
+    if (!isHouseNumberUnchangedOrValid(mHouseNumber.getText().toString()))
     {
-      if (!Editor.nativeIsHouseValid(mHouseNumber.getText().toString()))
-      {
-        mHouseNumber.requestFocus();
-        InputUtils.showKeyboard(mHouseNumber);
-        return false;
-      }
-
-      if (!Editor.nativeIsLevelValid(mBuildingLevels.getText().toString()))
-      {
-        mBuildingLevels.requestFocus();
-        InputUtils.showKeyboard(mBuildingLevels);
-        return false;
-      }
+      mHouseNumber.requestFocus();
+      InputUtils.showKeyboard(mHouseNumber);
+      return false;
     }
 
     for (var e : mMetadata.entrySet())
@@ -281,6 +250,11 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
   private static boolean isUnchangedOrValid(int id, @NonNull String value)
   {
     return value.equals(Editor.nativeGetMetadata(id)) || Editor.nativeIsMetadataValid(id, value);
+  }
+
+  private static boolean isHouseNumberUnchangedOrValid(@NonNull String houseNumber)
+  {
+    return houseNumber.equals(Editor.nativeGetHouseNumber()) || Editor.nativeIsHouseValid(houseNumber);
   }
 
   private boolean validateNames()
@@ -454,12 +428,10 @@ public class EditorFragment extends BaseMwmFragment implements View.OnClickListe
               R.string.editor_zip_code, R.string.error_enter_correct_zip_code, 0);
 
     // Details
-    View mBlockLevels = view.findViewById(R.id.block_levels);
-    mBuildingLevels =
-        findInputAndInitBlock(mBlockLevels, R.drawable.ic_floor,
-                              getString(R.string.editor_storey_number, Editor.nativeGetMaxEditableBuildingLevels()));
-    mBuildingLevels.setInputType(InputType.TYPE_CLASS_NUMBER);
-    mInputBuildingLevels = mBlockLevels.findViewById(R.id.custom_input);
+    final int maxBuildingLevels = Editor.nativeGetMaxEditableBuildingLevels();
+    initBlock(view, Metadata.MetadataType.FMD_BUILDING_LEVELS, R.id.block_levels, R.drawable.ic_floor,
+              getString(R.string.editor_storey_number, maxBuildingLevels),
+              getString(R.string.error_enter_correct_storey_number, maxBuildingLevels), InputType.TYPE_CLASS_NUMBER);
     View blockPhone = view.findViewById(R.id.block_phone);
     mPhone = blockPhone.findViewById(R.id.phone);
     mEditPhoneLink = blockPhone.findViewById(R.id.edit_phone);
